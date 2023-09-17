@@ -25,6 +25,36 @@ export interface UrlFormatted {
 }
 
 export interface Stringy {
-    key: string
-    value: string
+    key: string;
+    value: string;
+}
+
+export interface Stringys {
+    type: 'stringy',
+    value: Stringy[];
+}
+
+export interface UrlFormatteds {
+    type: 'urlFormatted',
+    value: UrlFormatted[];
+}
+
+export type FilteredData = Stringys | UrlFormatteds;
+
+export interface Page {
+    current: number,
+    max: number,
+    perPage: number;
+}
+
+export interface Searching {
+    value: string,
+    type: 'route' | 'endpoint' | 'string',
+    subType: 'key' | 'value';
+}
+
+export interface Data {
+    Routes: Routes | null;
+    Endpoints: Endpoints | null;
+    Strings: Strings | null;
 }

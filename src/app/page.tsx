@@ -1,56 +1,34 @@
 "use client";
-import { Endpoints, Routes, Strings, Stringy, UrlFormatted } from '@/types';
+
+import { Data, FilteredData, Page, Searching } from '@/types';
 import { FetchEndpoints, FetchRoutes, FetchStrings } from '@/utils/FetchStuff';
-import { ReverseObject } from '@/utils/ReverseObject';
-import { EscapeString } from '@/utils/StringEscape';
+import { FilterViaSearch } from '@/utils/FilterSearch';
+import { getIndexes } from '@/utils/GetIndexes';
 import { useState, useEffect } from 'react';
 
-interface Stringys {
-  type: 'stringy',
-  value: Stringy[];
-}
-
-interface UrlFormatteds {
-  type: 'urlFormatted',
-  value: UrlFormatted[];
-}
-
-type FilteredData = Stringys | UrlFormatteds;
-
-interface Page {
-  current: number,
-  max: number,
-  perPage: number;
-}
 
 const Home = () => {
-  const [data, setData] = useState<{
-    Routes: Routes | null,
-    Endpoints: Endpoints | null,
-    Strings: Strings | null,
-  }>({
+  const [data, setData] = useState<Data>({
     Routes: null,
     Endpoints: null,
     Strings: null,
   });
-  const [loading, setLoading] = useState<boolean>(true);
-  const [searching, setSearching] = useState<{
-    value: string,
-    type: 'route' | 'endpoint' | 'string',
-    subType: 'key' | 'value';
-  }>({
+
+  const [searching, setSearching] = useState<Searching>({
     value: '',
     type: 'route',
     subType: 'key'
   });
-  const [filteredData, setFilteredData] = useState<FilteredData>();
-  const [loadingString, setLoadingString] = useState<string>('Loading...');
+
   const [page, setPage] = useState<Page>({
     current: 1,
     max: 1,
     perPage: 10
   });
 
+  const [loading, setLoading] = useState<boolean>(true);
+  const [filteredData, setFilteredData] = useState<FilteredData>();
+  const [loadingString, setLoadingString] = useState<string>('Loading...');
   const [searchType, setSearchType] = useState<'regex' | 'string'>('string');
 
   useEffect(() => {
@@ -85,142 +63,29 @@ const Home = () => {
     fetchData();
   }, []);
 
-  const getIndexes = (page: Page, filteredData: FilteredData | undefined) => {
-    const startIndex = (page.current - 1) * page.perPage;
-    const endIndex = Math.min(startIndex + page.perPage, filteredData?.value.length ?? 0);
-
-    return {
-      startIndex,
-      endIndex
-    };
-  };
-
-
 
   useEffect(() => {
-    const FilterViaSearch = (forceKey?: boolean): any => {
+    const Filtered = FilterViaSearch(data, searching, searchType);
 
-      if (!data.Routes || !data.Endpoints || !data.Strings) {
-        console.warn('No data found');
-
-        return [];
-      }
-
-      switch (searching.type) {
-        case "endpoint":
-        case "route": {
-          const typeData = searching.type === 'endpoint' ? data.Endpoints : data.Routes;
-          const keys = Object.keys(typeData);
-          const values = Object.values(typeData);
-
-          switch (searching.subType) {
-            case "key": {
-              return keys
-                .filter(key => key.toLowerCase().includes(searching.value.toLowerCase()))
-                .map(key => {
-                  const value = typeData[key];
-                  if (!value) return {};
-                  return {
-                    url: value.route,
-                    firstSeen: value.firstSeen,
-                    key
-                  };
-                }) as UrlFormatted[];
-            }
-
-            case "value": {
-              return values
-                .filter(value => value.route.toLowerCase().includes(searching.value.toLowerCase()))
-                .map(value => {
-                  if (!value) return {};
-                  return {
-                    url: value.route,
-                    firstSeen: value.firstSeen,
-                    key: value.key
-                  };
-                }) as UrlFormatted[];
-            }
-          }
-
-        }
-
-        case "string": {
-          const keys = Object.keys(data.Strings);
-          const regex = new RegExp(searchType === 'string' ? EscapeString(searching.value.toLowerCase()) : searching.value, 'i');
-
-          if (forceKey) {
-            return keys
-              .filter(key => regex.test(key))
-              .map(key => ({
-                key,
-                value: data.Strings?.[key] as string
-              }));
-          }
-
-          switch (searching.subType) {
-            case "key": {
-              return keys
-                .filter(key => regex.test(key))
-                .map(key => ({
-                  key,
-                  value: data.Strings?.[key] as string
-                }));
-            }
-
-            case "value": {
-              const Reversed = ReverseObject(data.Strings ?? {});
-              const newKeys = Object.keys(Reversed);
-
-              return newKeys
-                .filter(key => regex.test(key.toLowerCase()))
-                .map(key => ({
-                  key: Reversed[key],
-                  value: key
-                }));
-            }
-          }
-
-        }
-      }
-    };
-
-    const Filtered = FilterViaSearch();
-
-    setPage({
+    setPage((page) => ({
       ...page,
       max: Math.round(Filtered.length / page.perPage),
       current: 1
-    });
+    }));
 
     setFilteredData({
       type: searching.type === 'string' ? 'stringy' : 'urlFormatted',
       value: Filtered
     });
 
-  }, [searching, data]);
+  }, [searching, data, searchType]);
 
   useEffect(() => {
     if (!loading) return;
 
     const interval = setInterval(() => {
       setLoadingString((loadingString) => {
-        switch (loadingString) {
-          case 'Loading...': {
-            return 'Loading.';
-          }
-          case 'Loading.': {
-            return 'Loading..';
-          }
-          case 'Loading..': {
-            return 'Loading...';
-          }
-          case 'Loading': {
-            return 'Loading.';
-          }
-          default: {
-            return 'Loading.';
-          }
-        }
+        return loadingString === 'Loading...' ? 'Loading.' : 'Loading...';
       });
     }, 500);
 
@@ -253,9 +118,7 @@ const Home = () => {
                 />
 
                 <button
-                  onClick={() => {
-                    setSearchType(searchType === 'regex' ? 'string' : 'regex');
-                  }}
+                  onClick={() => setSearchType(searchType === 'regex' ? 'string' : 'regex')}
                   className="bg-[#202225] rounded-md p-2 mb-4 ml-2"
                 >
                   {searchType === 'regex' ? 'Regex' : 'String'}
@@ -313,7 +176,7 @@ const Home = () => {
                     });
                   }}
                 >
-                  String (Laggy)
+                  String
                 </button>
               </div>
               <div className="flex flex-row mt-4">
@@ -343,15 +206,15 @@ const Home = () => {
                     <table className="table-auto">
                       <thead>
                         <tr>
-                          <th className="">Key</th>
-                          <th className="">Value</th>
+                          <th>Key</th>
+                          <th>Value</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredData?.value.slice(getIndexes(page, filteredData).startIndex, getIndexes(page, filteredData).endIndex).map((value) => (
                           <tr key={value.key}>
-                            <td className="">{value.key}</td>
-                            <td className="">{value.value}</td>
+                            <td>{value.key}</td>
+                            <td>{value.value}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -365,17 +228,15 @@ const Home = () => {
                     <table className="table-auto">
                       <thead>
                         <tr>
-                          <th className="">Key</th>
-                          <th className="">URL</th>
-                          {/* <th className="">First Seen</th> */}
+                          <th>Key</th>
+                          <th>URL</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredData?.value.slice(getIndexes(page, filteredData).startIndex, getIndexes(page, filteredData).endIndex).map((value) => (
                           <tr key={value.key}>
-                            <td className="">{value.key}</td>
-                            <td className="">{value.url}</td>
-                            {/* <td className="">{value.firstSeen}</td> */}
+                            <td>{value.key}</td>
+                            <td>{value.url}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -387,23 +248,19 @@ const Home = () => {
             <div className="flex flex-row items-center justify-center mt-4">
               <button
                 className="border-2 border-[#5865F2] rounded-md p-2 mr-2"
-                onClick={() => {
-                  setPage({
-                    ...page,
-                    current: page.current - 1 < 1 ? page.max : page.current - 1
-                  });
-                }}
+                onClick={() => setPage({
+                  ...page,
+                  current: page.current - 1 < 1 ? page.max : page.current - 1
+                })}
               >
                 Previous
               </button>
               <button
                 className="border-2 border-[#5865F2] rounded-md p-2 mr-2"
-                onClick={() => {
-                  setPage({
-                    ...page,
-                    current: page.current + 1 > page.max ? 1 : page.current + 1
-                  });
-                }}
+                onClick={() => setPage({
+                  ...page,
+                  current: page.current + 1 > page.max ? 1 : page.current + 1
+                })}
               >
                 Next
               </button>
@@ -413,12 +270,11 @@ const Home = () => {
             </div>
           </>
         )}
-        <div className="flex flex-row items-center justify-center mt-4">
-          <p className="text-sm font-bold">Made by DarkerInk, this is not affiliated with Discord</p>
-        </div>
+      <div className="flex flex-row items-center justify-center mt-4">
+        <p className="text-sm font-bold">Made by DarkerInk, this is not affiliated with Discord</p>
+      </div>
     </main>
   );
-
 };
 
 export default Home;
