@@ -15,6 +15,12 @@ interface UrlFormatteds {
 
 type FilteredData = Stringys | UrlFormatteds;
 
+interface Page {
+  current: number,
+  max: number,
+  perPage: number;
+}
+
 const Home = () => {
   const [data, setData] = useState<{
     Routes: Routes | null,
@@ -25,7 +31,6 @@ const Home = () => {
     Endpoints: null,
     Strings: null,
   });
-
   const [loading, setLoading] = useState<boolean>(true);
   const [searching, setSearching] = useState<{
     value: string,
@@ -36,10 +41,13 @@ const Home = () => {
     type: 'route',
     subType: 'key'
   });
-
   const [filteredData, setFilteredData] = useState<FilteredData>();
-
   const [loadingString, setLoadingString] = useState<string>('Loading...');
+  const [page, setPage] = useState<Page>({
+    current: 1,
+    max: 1,
+    perPage: 10
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -61,12 +69,27 @@ const Home = () => {
         value: ''
       });
 
-      console.log(`Wowie, I've loaded ${Object.keys(Endpoints).length} endpoints, ${Object.keys(Routes).length} routes and ${Object.keys(Strings).length} strings!`)
+      setPage({
+        current: 1,
+        max: Math.round(Object.keys(Endpoints).length / 100),
+        perPage: 100
+      });
+
+      console.log(`Wowie, I've loaded ${Object.keys(Endpoints).length} endpoints, ${Object.keys(Routes).length} routes and ${Object.keys(Strings).length} strings!`);
     };
 
     fetchData();
   }, []);
 
+  const getIndexes = (page: Page, filteredData: FilteredData | undefined) => {
+    const startIndex = (page.current - 1) * page.perPage;
+    const endIndex = Math.min(startIndex + page.perPage, filteredData?.value.length ?? 0);
+
+    return {
+      startIndex,
+      endIndex
+    };
+  };
 
   useEffect(() => {
     const FilterViaSearch = (forceKey?: boolean): any => {
@@ -76,7 +99,6 @@ const Home = () => {
 
         return [];
       }
-
 
       switch (searching.type) {
         case "endpoint":
@@ -123,11 +145,11 @@ const Home = () => {
 
           if (forceKey) {
             return keys
-                .filter(key => regex.test(key))
-                .map(key => ({
-                  key,
-                  value: data.Strings?.[key] as string
-                }));
+              .filter(key => regex.test(key))
+              .map(key => ({
+                key,
+                value: data.Strings?.[key] as string
+              }));
           }
 
           switch (searching.subType) {
@@ -143,7 +165,9 @@ const Home = () => {
             case "value": {
               if (searching.value === '') return FilterViaSearch(true);
 
-              const Filtered = values.filter(value => regex.test(value)).slice(0, 50);
+              const { endIndex, startIndex } = getIndexes(page, filteredData);
+
+              const Filtered = values.filter(value => regex.test(value)).slice(startIndex, endIndex);
 
               return Filtered.map(value => {
                 const key = Object.keys(data.Strings ?? {}).find(key => data.Strings?.[key].toLowerCase() === value.toLowerCase());
@@ -158,15 +182,21 @@ const Home = () => {
 
         }
       }
-
-      return [];
     };
+
+    const Filtered = FilterViaSearch();
+
+    setPage({
+      ...page,
+      max: Math.round(Filtered.length / page.perPage),
+      current: 1
+    });
 
     setFilteredData({
       type: searching.type === 'string' ? 'stringy' : 'urlFormatted',
-      // 50 for strings, 200 for routes and endpoints (this is due to the omg amount of strigns compared to routes and endpoints)
-      value: searching.type === 'string' ? FilterViaSearch().slice(0, 50) : FilterViaSearch().slice(0, 200)
+      value: Filtered
     });
+
   }, [searching, data]);
 
   useEffect(() => {
@@ -216,28 +246,52 @@ const Home = () => {
             <div className="flex flex-row">
               <button
                 className={`border-2 border-[#5865F2] rounded-md p-2 mr-2 ${searching.type === 'route' ? 'bg-[#5865F2]' : ''}`}
-                onClick={() => setSearching({
-                  ...searching,
-                  type: 'route'
-                })}
+                onClick={() => {
+                  setSearching({
+                    ...searching,
+                    type: 'route'
+                  });
+
+                  setPage({
+                    current: 1,
+                    max: Math.round(Object.keys(data.Endpoints ?? {}).length / 100),
+                    perPage: 100
+                  });
+                }}
               >
                 Route
               </button>
               <button
                 className={`border-2 border-[#5865F2]  rounded-md p-2 mr-2 ${searching.type === 'endpoint' ? 'bg-[#5865F2]' : ''}`}
-                onClick={() => setSearching({
-                  ...searching,
-                  type: 'endpoint'
-                })}
+                onClick={() => {
+                  setSearching({
+                    ...searching,
+                    type: 'endpoint'
+                  });
+
+                  setPage({
+                    current: 1,
+                    max: Math.round(Object.keys(data.Endpoints ?? {}).length / 100),
+                    perPage: 100
+                  });
+                }}
               >
                 Endpoint
               </button>
               <button
                 className={`border-2 border-[#5865F2] rounded-md p-2 mr-2 ${searching.type === 'string' ? 'bg-[#5865F2]' : ''}`}
-                onClick={() => setSearching({
-                  ...searching,
-                  type: 'string'
-                })}
+                onClick={() => {
+                  setSearching({
+                    ...searching,
+                    type: 'string'
+                  });
+
+                  setPage({
+                    current: 1,
+                    max: Math.round(Object.keys(data.Strings ?? {}).length / 50),
+                    perPage: 50
+                  });
+                }}
               >
                 String (Laggy)
               </button>
@@ -274,8 +328,8 @@ const Home = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredData?.value.map((value) => (
-                        <tr key={value.key + value.value}>
+                      {filteredData?.value.slice(getIndexes(page, filteredData).startIndex, getIndexes(page, filteredData).endIndex).map((value) => (
+                        <tr key={value.key}>
                           <td className="">{value.key}</td>
                           <td className="">{value.value}</td>
                         </tr>
@@ -293,15 +347,15 @@ const Home = () => {
                       <tr>
                         <th className="">Key</th>
                         <th className="">URL</th>
-                        <th className="">First Seen</th>
+                        {/* <th className="">First Seen</th> */}
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredData?.value.map((value) => (
+                      {filteredData?.value.slice(getIndexes(page, filteredData).startIndex, getIndexes(page, filteredData).endIndex).map((value) => (
                         <tr key={value.key}>
                           <td className="">{value.key}</td>
                           <td className="">{value.url}</td>
-                          <td className="">{new Date(value.firstSeen).toLocaleString()}</td>
+                          {/* <td className="">{value.firstSeen}</td> */}
                         </tr>
                       ))}
                     </tbody>
@@ -312,6 +366,33 @@ const Home = () => {
           </div>
         </>
       )}
+      <div className="flex flex-row items-center justify-center mt-4">
+        <button
+          className="border-2 border-[#5865F2] rounded-md p-2 mr-2"
+          onClick={() => {
+            setPage({
+              ...page,
+              current: page.current - 1 < 1 ? page.max : page.current - 1
+            });
+          }}
+        >
+          Previous
+        </button>
+        <button
+          className="border-2 border-[#5865F2] rounded-md p-2 mr-2"
+          onClick={() => {
+            setPage({
+              ...page,
+              current: page.current + 1 > page.max ? 1 : page.current + 1
+            });
+          }}
+        >
+          Next
+        </button>
+      </div>
+      <div className="flex flex-row items-center justify-center mt-4">
+        <p className="text-2xl font-bold">Page {page.current} out of {page.max}</p>
+      </div>
     </main>
   );
 
