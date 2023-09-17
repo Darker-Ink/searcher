@@ -19,5 +19,18 @@ th {
 input {
   border: none;
   outline: none;
+}
 
+::-webkit-scrollbar {
+  width: 10px;
+  background-color: #2f3136;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #202225;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #202225 #2f3136;
 }

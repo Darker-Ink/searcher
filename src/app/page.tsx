@@ -111,7 +111,7 @@ const Home = () => {
           switch (searching.subType) {
             case "key": {
               return keys
-                .filter(key => key.includes(searching.value))
+                .filter(key => key.toLowerCase().includes(searching.value.toLowerCase()))
                 .map(key => {
                   const value = typeData[key];
                   if (!value) return {};
@@ -125,7 +125,7 @@ const Home = () => {
 
             case "value": {
               return values
-                .filter(value => value.route.includes(searching.value))
+                .filter(value => value.route.toLowerCase().includes(searching.value.toLowerCase()))
                 .map(value => {
                   if (!value) return {};
                   return {
