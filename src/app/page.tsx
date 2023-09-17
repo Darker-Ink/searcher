@@ -2,6 +2,7 @@
 import { Endpoints, Routes, Strings, Stringy, UrlFormatted } from '@/types';
 import { FetchEndpoints, FetchRoutes, FetchStrings } from '@/utils/FetchStuff';
 import { ReverseObject } from '@/utils/ReverseObject';
+import { EscapeString } from '@/utils/StringEscape';
 import { useState, useEffect } from 'react';
 
 interface Stringys {
@@ -50,6 +51,8 @@ const Home = () => {
     perPage: 10
   });
 
+  const [searchType, setSearchType] = useState<'regex' | 'string'>('string');
+
   useEffect(() => {
     const fetchData = async () => {
       const Endpoints = await FetchEndpoints();
@@ -91,6 +94,8 @@ const Home = () => {
       endIndex
     };
   };
+
+
 
   useEffect(() => {
     const FilterViaSearch = (forceKey?: boolean): any => {
@@ -141,7 +146,7 @@ const Home = () => {
 
         case "string": {
           const keys = Object.keys(data.Strings);
-          const regex = new RegExp(searching.value.toLowerCase(), 'i');
+          const regex = new RegExp(searchType === 'string' ? EscapeString(searching.value.toLowerCase()) : searching.value, 'i');
 
           if (forceKey) {
             return keys
@@ -224,170 +229,193 @@ const Home = () => {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      {loading ? (<>{loadingString}</>) : (
-        <>
+      {loading ?
+        (<>
           <div className="flex flex-col items-center justify-center">
             <h1 className="text-4xl font-bold mb-4">Discord Thingy Search</h1>
-            <input
-              type="text"
-              className="rounded-md p-2 mb-4 w-96 bg-[#202225]"
-              placeholder="Search for something"
-              value={searching.value}
-              onChange={(e) => setSearching({
-                ...searching,
-                value: e.target.value
-              })}
-            />
-            <div className="flex flex-row">
-              <button
-                className={`border-2 border-[#5865F2] rounded-md p-2 mr-2 ${searching.type === 'route' ? 'bg-[#5865F2]' : ''}`}
-                onClick={() => {
-                  setSearching({
-                    ...searching,
-                    type: 'route'
-                  });
-
-                  setPage({
-                    current: 1,
-                    max: Math.round(Object.keys(data.Endpoints ?? {}).length / 100),
-                    perPage: 100
-                  });
-                }}
-              >
-                Route
-              </button>
-              <button
-                className={`border-2 border-[#5865F2]  rounded-md p-2 mr-2 ${searching.type === 'endpoint' ? 'bg-[#5865F2]' : ''}`}
-                onClick={() => {
-                  setSearching({
-                    ...searching,
-                    type: 'endpoint'
-                  });
-
-                  setPage({
-                    current: 1,
-                    max: Math.round(Object.keys(data.Endpoints ?? {}).length / 100),
-                    perPage: 100
-                  });
-                }}
-              >
-                Endpoint
-              </button>
-              <button
-                className={`border-2 border-[#5865F2] rounded-md p-2 mr-2 ${searching.type === 'string' ? 'bg-[#5865F2]' : ''}`}
-                onClick={() => {
-                  setSearching({
-                    ...searching,
-                    type: 'string'
-                  });
-
-                  setPage({
-                    current: 1,
-                    max: Math.round(Object.keys(data.Strings ?? {}).length / 50),
-                    perPage: 50
-                  });
-                }}
-              >
-                String (Laggy)
-              </button>
-            </div>
-            <div className="flex flex-row mt-4">
-              <button
-                className={`border-2 border-[#5865F2] rounded-md p-2 mr-2 ${searching.subType === 'key' ? 'bg-[#5865F2]' : ''}`}
-                onClick={() => setSearching({
-                  ...searching,
-                  subType: 'key'
-                })}
-              >
-                Key
-              </button>
-              <button
-                className={`border-2 border-[#5865F2] rounded-md p-2 mr-2 ${searching.subType === 'value' ? 'bg-[#5865F2]' : ''}`}
-                onClick={() => setSearching({
-                  ...searching,
-                  subType: 'value'
-                })}
-              >
-                Value
-              </button>
-            </div>
-            {filteredData?.type == 'stringy' ? (
-              <>
-                <div className="flex flex-col items-center justify-center mt-4 bg-[#202225] rounded-md">
-                  <h1 className="text-4xl font-bold mb-4">Results</h1>
-                  <table className="table-auto">
-                    <thead>
-                      <tr>
-                        <th className="">Key</th>
-                        <th className="">Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredData?.value.slice(getIndexes(page, filteredData).startIndex, getIndexes(page, filteredData).endIndex).map((value) => (
-                        <tr key={value.key}>
-                          <td className="">{value.key}</td>
-                          <td className="">{value.value}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex flex-col items-center justify-center mt-4 bg-[#202225] rounded-md">
-                  <h1 className="text-4xl font-bold mb-4">Results</h1>
-                  <table className="table-auto">
-                    <thead>
-                      <tr>
-                        <th className="">Key</th>
-                        <th className="">URL</th>
-                        {/* <th className="">First Seen</th> */}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredData?.value.slice(getIndexes(page, filteredData).startIndex, getIndexes(page, filteredData).endIndex).map((value) => (
-                        <tr key={value.key}>
-                          <td className="">{value.key}</td>
-                          <td className="">{value.url}</td>
-                          {/* <td className="">{value.firstSeen}</td> */}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
+            <h1 className="text-2xl font-bold mb-4">{loadingString}</h1>
           </div>
         </>
-      )}
-      <div className="flex flex-row items-center justify-center mt-4">
-        <button
-          className="border-2 border-[#5865F2] rounded-md p-2 mr-2"
-          onClick={() => {
-            setPage({
-              ...page,
-              current: page.current - 1 < 1 ? page.max : page.current - 1
-            });
-          }}
-        >
-          Previous
-        </button>
-        <button
-          className="border-2 border-[#5865F2] rounded-md p-2 mr-2"
-          onClick={() => {
-            setPage({
-              ...page,
-              current: page.current + 1 > page.max ? 1 : page.current + 1
-            });
-          }}
-        >
-          Next
-        </button>
-      </div>
-      <div className="flex flex-row items-center justify-center mt-4">
-        <p className="text-2xl font-bold">Page {page.current} out of {page.max}</p>
-      </div>
+        ) : (
+          <>
+            <div className="flex flex-col items-center justify-center">
+              <h1 className="text-4xl font-bold mb-4">Discord Thingy Search</h1>
+              <div className="flex items-center justify-center">
+                <input
+                  type="text"
+                  className="rounded-md p-2 mb-4 w-96 bg-[#202225]"
+                  placeholder="Search for something"
+                  value={searching.value}
+                  onChange={(e) => setSearching({
+                    ...searching,
+                    value: e.target.value
+                  })}
+                />
+
+                <button
+                  onClick={() => {
+                    setSearchType(searchType === 'regex' ? 'string' : 'regex');
+                  }}
+                  className="bg-[#202225] rounded-md p-2 mb-4 ml-2"
+                >
+                  {searchType === 'regex' ? 'Regex' : 'String'}
+                </button>
+
+              </div>
+
+              <div className="flex flex-row">
+                <button
+                  className={`border-2 border-[#5865F2] rounded-md p-2 mr-2 ${searching.type === 'route' ? 'bg-[#5865F2]' : ''}`}
+                  onClick={() => {
+                    setSearching({
+                      ...searching,
+                      type: 'route'
+                    });
+
+                    setPage({
+                      current: 1,
+                      max: Math.round(Object.keys(data.Endpoints ?? {}).length / 100),
+                      perPage: 100
+                    });
+                  }}
+                >
+                  Route
+                </button>
+                <button
+                  className={`border-2 border-[#5865F2]  rounded-md p-2 mr-2 ${searching.type === 'endpoint' ? 'bg-[#5865F2]' : ''}`}
+                  onClick={() => {
+                    setSearching({
+                      ...searching,
+                      type: 'endpoint'
+                    });
+
+                    setPage({
+                      current: 1,
+                      max: Math.round(Object.keys(data.Endpoints ?? {}).length / 100),
+                      perPage: 100
+                    });
+                  }}
+                >
+                  Endpoint
+                </button>
+                <button
+                  className={`border-2 border-[#5865F2] rounded-md p-2 mr-2 ${searching.type === 'string' ? 'bg-[#5865F2]' : ''}`}
+                  onClick={() => {
+                    setSearching({
+                      ...searching,
+                      type: 'string'
+                    });
+
+                    setPage({
+                      current: 1,
+                      max: Math.round(Object.keys(data.Strings ?? {}).length / 50),
+                      perPage: 50
+                    });
+                  }}
+                >
+                  String (Laggy)
+                </button>
+              </div>
+              <div className="flex flex-row mt-4">
+                <button
+                  className={`border-2 border-[#5865F2] rounded-md p-2 mr-2 ${searching.subType === 'key' ? 'bg-[#5865F2]' : ''}`}
+                  onClick={() => setSearching({
+                    ...searching,
+                    subType: 'key'
+                  })}
+                >
+                  Key
+                </button>
+                <button
+                  className={`border-2 border-[#5865F2] rounded-md p-2 mr-2 ${searching.subType === 'value' ? 'bg-[#5865F2]' : ''}`}
+                  onClick={() => setSearching({
+                    ...searching,
+                    subType: 'value'
+                  })}
+                >
+                  Value
+                </button>
+              </div>
+              {filteredData?.type == 'stringy' ? (
+                <>
+                  <div className="flex flex-col items-center justify-center mt-4 bg-[#202225] rounded-md">
+                    <h1 className="text-4xl font-bold mb-4">Results</h1>
+                    <table className="table-auto">
+                      <thead>
+                        <tr>
+                          <th className="">Key</th>
+                          <th className="">Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredData?.value.slice(getIndexes(page, filteredData).startIndex, getIndexes(page, filteredData).endIndex).map((value) => (
+                          <tr key={value.key}>
+                            <td className="">{value.key}</td>
+                            <td className="">{value.value}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-col items-center justify-center mt-4 bg-[#202225] rounded-md">
+                    <h1 className="text-4xl font-bold mb-4">Results</h1>
+                    <table className="table-auto">
+                      <thead>
+                        <tr>
+                          <th className="">Key</th>
+                          <th className="">URL</th>
+                          {/* <th className="">First Seen</th> */}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredData?.value.slice(getIndexes(page, filteredData).startIndex, getIndexes(page, filteredData).endIndex).map((value) => (
+                          <tr key={value.key}>
+                            <td className="">{value.key}</td>
+                            <td className="">{value.url}</td>
+                            {/* <td className="">{value.firstSeen}</td> */}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex flex-row items-center justify-center mt-4">
+              <button
+                className="border-2 border-[#5865F2] rounded-md p-2 mr-2"
+                onClick={() => {
+                  setPage({
+                    ...page,
+                    current: page.current - 1 < 1 ? page.max : page.current - 1
+                  });
+                }}
+              >
+                Previous
+              </button>
+              <button
+                className="border-2 border-[#5865F2] rounded-md p-2 mr-2"
+                onClick={() => {
+                  setPage({
+                    ...page,
+                    current: page.current + 1 > page.max ? 1 : page.current + 1
+                  });
+                }}
+              >
+                Next
+              </button>
+            </div>
+            <div className="flex flex-row items-center justify-center mt-4">
+              <p className="text-2xl font-bold">Page {page.current} out of {page.max}</p>
+            </div>
+          </>
+        )}
+        <div className="flex flex-row items-center justify-center mt-4">
+          <p className="text-sm font-bold">Made by DarkerInk, this is not affiliated with Discord</p>
+        </div>
     </main>
   );
 
