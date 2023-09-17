@@ -1,6 +1,7 @@
 "use client";
 import { Endpoints, Routes, Strings, Stringy, UrlFormatted } from '@/types';
 import { FetchEndpoints, FetchRoutes, FetchStrings } from '@/utils/FetchStuff';
+import { ReverseObject } from '@/utils/ReverseObject';
 import { useState, useEffect } from 'react';
 
 interface Stringys {
@@ -140,7 +141,6 @@ const Home = () => {
 
         case "string": {
           const keys = Object.keys(data.Strings);
-          const values = Object.values(data.Strings);
           const regex = new RegExp(searching.value.toLowerCase(), 'i');
 
           if (forceKey) {
@@ -163,20 +163,15 @@ const Home = () => {
             }
 
             case "value": {
-              if (searching.value === '') return FilterViaSearch(true);
+              const Reversed = ReverseObject(data.Strings ?? {});
+              const newKeys = Object.keys(Reversed);
 
-              const { endIndex, startIndex } = getIndexes(page, filteredData);
-
-              const Filtered = values.filter(value => regex.test(value)).slice(startIndex, endIndex);
-
-              return Filtered.map(value => {
-                const key = Object.keys(data.Strings ?? {}).find(key => data.Strings?.[key].toLowerCase() === value.toLowerCase());
-                if (!key) return {};
-                return {
-                  key,
-                  value
-                };
-              }) as Stringy[];
+              return newKeys
+                .filter(key => regex.test(key.toLowerCase()))
+                .map(key => ({
+                  key: Reversed[key],
+                  value: key
+                }));
             }
           }
 
