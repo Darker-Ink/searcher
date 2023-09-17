@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    background-color: #36393f;
+    color: white;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 1em 2px;  
+}
+
+th {
+  text-align: left;
+}
+
+input {
+  border: none;
+  outline: none;
+
+}
